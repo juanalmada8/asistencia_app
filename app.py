@@ -7,6 +7,14 @@ import json
 
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
+st.markdown(
+    """
+    <link rel="shortcut icon" href="favicon.png">
+    """,
+    unsafe_allow_html=True
+)
+
+
 # Verificamos si ya está autenticado
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
