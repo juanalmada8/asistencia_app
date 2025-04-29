@@ -16,7 +16,7 @@ if not st.session_state.logged_in:
     pwd = st.text_input("Clave de acceso", type="password")
     if pwd == st.secrets["app"]["password"]:
         st.session_state.logged_in = True
-        st.experimental_rerun()
+        st.rerun()
     elif pwd != "":
         st.error("❌ Clave incorrecta")
     st.stop()
