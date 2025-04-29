@@ -5,15 +5,16 @@ from datetime import datetime
 from PIL import Image
 import json
 
+# ✅ Esto tiene que ir antes que cualquier otro st.*
+st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
+
+# 🔐 Login simple
 st.markdown("### 🔐 Ingreso de entrenador")
 pwd = st.text_input("Clave de acceso", type="password")
 
 if pwd != st.secrets["app"]["password"]:
     st.warning("⚠️ Ingresá la clave correcta para continuar.")
     st.stop()
-
-
-st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
 # Mostrar logo del club
 logo = Image.open("icon.jpg")
