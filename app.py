@@ -5,12 +5,10 @@ from datetime import datetime
 from PIL import Image
 import json
 
-PASSWORD = st.secrets["app_password"]
-
 st.markdown("### 🔐 Ingreso de entrenador")
-
 pwd = st.text_input("Clave de acceso", type="password")
-if st.text_input("Clave de acceso", type="password") != st.secrets["app"]["password"]:
+
+if pwd != st.secrets["app"]["password"]:
     st.warning("⚠️ Ingresá la clave correcta para continuar.")
     st.stop()
 
