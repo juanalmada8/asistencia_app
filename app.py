@@ -3,6 +3,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 from PIL import Image
+import json
 
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
@@ -12,7 +13,9 @@ st.image(logo, width=120)
 
 # Autenticación
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+credentials_dict = json.loads(st.secrets["credentials"])
+creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+
 client = gspread.authorize(creds)
 
 spreadsheet = client.open("Asistencia Hockey")
