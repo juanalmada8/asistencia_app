@@ -5,11 +5,21 @@ from datetime import datetime
 from PIL import Image
 import json
 
+PASSWORD = st.secrets["app_password"]
+
+st.markdown("### 🔐 Ingreso de entrenador")
+pwd = st.text_input("Clave de acceso", type="password")
+if pwd != PASSWORD:
+    st.warning("⚠️ Ingresá la clave para usar la app.")
+    st.stop()
+
+
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
 # Mostrar logo del club
 logo = Image.open("icon.jpg")
 st.image(logo, width=120)
+
 
 # Autenticación
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
