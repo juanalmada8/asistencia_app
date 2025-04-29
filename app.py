@@ -8,9 +8,10 @@ import json
 PASSWORD = st.secrets["app_password"]
 
 st.markdown("### 🔐 Ingreso de entrenador")
+
 pwd = st.text_input("Clave de acceso", type="password")
-if pwd != PASSWORD:
-    st.warning("⚠️ Ingresá la clave para usar la app.")
+if st.text_input("Clave de acceso", type="password") != st.secrets["app"]["password"]:
+    st.warning("⚠️ Ingresá la clave correcta para continuar.")
     st.stop()
 
 
