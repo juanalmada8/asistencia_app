@@ -89,11 +89,11 @@ if st.button("✅ Guardar asistencia"):
             d["comentario"]
         ])
     try:
-        for i in range(0, len(nuevas_filas), 12):
-            asistencias_ws.append_rows(nuevas_filas[i:i+12])
-            sleep(0.2)
+        for fila in nuevas_filas:
+            asistencias_ws.append_row(fila)
         st.success("✅ ¡Asistencia guardada con éxito!")
     except Exception as e:
         st.error("❌ Error al guardar la asistencia.")
         st.exception(e)
+
         
