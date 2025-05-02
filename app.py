@@ -4,6 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 from PIL import Image
 import json
+from time import sleep
 
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
@@ -51,7 +52,7 @@ jugadoras, asistencias_ws = cargar_datos()
 
 # UI
 st.title("Registro de Asistencia 🏑")
-st.markdown("### 📅 Fecha del entrenamiento")
+st.markdown("### 🗓️ Fecha del entrenamiento")
 fecha = st.date_input("", value=datetime.today())
 
 st.markdown("### Jugadoras")
@@ -87,5 +88,11 @@ if st.button("✅ Guardar asistencia"):
             d["llego_tarde"],
             d["comentario"]
         ])
-    asistencias_ws.append_rows(nuevas_filas)
-    st.success("✅ ¡Asistencia guardada con éxito!")
+    try:
+        for i in range(0, len(nuevas_filas), 12):
+            asistencias_ws.append_rows(nuevas_filas[i:i+12])
+            sleep(0.2)
+        st.success("✅ ¡Asistencia guardada con éxito!")
+    except Exception as e:
+        st.error("❌ Error al guardar la asistencia.")
+        st.exception(e)
