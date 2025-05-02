@@ -96,3 +96,4 @@ if st.button("✅ Guardar asistencia"):
     except Exception as e:
         st.error("❌ Error al guardar la asistencia.")
         st.exception(e)
+        
