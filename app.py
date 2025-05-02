@@ -5,6 +5,9 @@ from datetime import datetime
 from PIL import Image
 import json
 from time import sleep
+import requests
+from google.oauth2 import service_account
+from google.auth.transport.requests import AuthorizedSession
 
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
@@ -43,12 +46,28 @@ def cargar_datos():
 
     spreadsheet = client.open("Asistencia Hockey")
     jugadoras_ws = spreadsheet.worksheet("Jugadoras")
-    asistencias_ws = spreadsheet.worksheet("Asistencias")
     jugadoras = jugadoras_ws.col_values(1)[1:]  # sin encabezado
 
-    return jugadoras, asistencias_ws
+    return jugadoras
 
-jugadoras, asistencias_ws = cargar_datos()
+jugadoras = cargar_datos()
+
+# Funcíon alternativa para guardar asistencia directo con API
+@st.cache_resource
+def get_authed_session():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = service_account.Credentials.from_service_account_info(
+        st.secrets["credentials"], scopes=scopes
+    )
+    return AuthorizedSession(creds)
+
+def append_rows_direct(sheet_id, rango, valores):
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{rango}:append"
+    params = {"valueInputOption": "USER_ENTERED"}
+    body = {"values": valores}
+    session = get_authed_session()
+    response = session.post(url, params=params, json=body)
+    response.raise_for_status()
 
 # UI
 st.title("Registro de Asistencia 🏑")
@@ -89,11 +108,12 @@ if st.button("✅ Guardar asistencia"):
             d["comentario"]
         ])
     try:
-        for fila in nuevas_filas:
-            asistencias_ws.append_row(fila)
+        append_rows_direct(
+            sheet_id="1MIzfkUB9kOsHyvNKVfBcS0VzmGbJnE4w8ufnvxHd5Po",
+            rango="Asistencias!A1:E1",
+            valores=nuevas_filas
+        )
         st.success("✅ ¡Asistencia guardada con éxito!")
     except Exception as e:
         st.error("❌ Error al guardar la asistencia.")
         st.exception(e)
-
-        
