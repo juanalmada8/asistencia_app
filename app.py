@@ -14,8 +14,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-# Verificamos si ya está autenticado
+# 🔐 Autenticación con clave
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -29,28 +28,26 @@ if not st.session_state.logged_in:
         st.error("❌ Clave incorrecta")
     st.stop()
 
-
-# Mostrar logo del club
+# Mostrar logo
 logo = Image.open("icon.jpg")
 st.image(logo, width=120)
 
-
-# Autenticación
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials_dict = st.secrets["credentials"]
-creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
-
-client = gspread.authorize(creds)
-
-spreadsheet = client.open("Asistencia Hockey")
-jugadoras_ws = spreadsheet.worksheet("Jugadoras")
-asistencias_ws = spreadsheet.worksheet("Asistencias")
-
+# 🧠 CACHE: agrupar conexión + lecturas en 1 sola función
 @st.cache_data(ttl=300)
-def obtener_jugadoras():
-    return jugadoras_ws.col_values(1)[1:]
+def cargar_datos():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    credentials_dict = st.secrets["credentials"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    client = gspread.authorize(creds)
 
-jugadoras = obtener_jugadoras()
+    spreadsheet = client.open("Asistencia Hockey")
+    jugadoras_ws = spreadsheet.worksheet("Jugadoras")
+    asistencias_ws = spreadsheet.worksheet("Asistencias")
+    jugadoras = jugadoras_ws.col_values(1)[1:]  # sin encabezado
+
+    return jugadoras, asistencias_ws
+
+jugadoras, asistencias_ws = cargar_datos()
 
 # UI
 st.title("Registro de Asistencia 🏑")
@@ -60,7 +57,6 @@ fecha = st.date_input("", value=datetime.today())
 st.markdown("### Jugadoras")
 datos_asistencia = []
 
-# Mobile-friendly: todo en un bloque por jugadora
 for jugadora in jugadoras:
     st.markdown(f"**{jugadora}**")
     asistio = st.checkbox("Asistió", key=f"asistio_{jugadora}")
