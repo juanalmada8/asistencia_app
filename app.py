@@ -86,7 +86,8 @@ for jugadora in jugadoras:
 
     if asistio:
         tarde = st.checkbox("Llegó tarde", key=f"tarde_{jugadora}")
-        comentario = st.text_input("Comentario (opcional)", key=f"comentario_{jugadora}")
+    comentario = st.text_input("Comentario (opcional)", key=f"comentario_{jugadora}")
+
 
     datos_asistencia.append({
         "jugadora": jugadora,
@@ -113,7 +114,8 @@ if st.button("✅ Guardar asistencia"):
             rango="Asistencias!A1:E1",
             valores=nuevas_filas
         )
-        st.success("✅ ¡Asistencia guardada con éxito!")
+        total_asistieron = sum(1 for d in datos_asistencia if d["asistio"] == "SÍ")
+        st.success(f"✅ ¡Asistencia guardada con éxito! 🟢 {total_asistieron} jugadoras asistieron.")
     except Exception as e:
         st.error("❌ Error al guardar la asistencia.")
         st.exception(e)
