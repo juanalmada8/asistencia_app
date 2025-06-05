@@ -3,8 +3,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 from PIL import Image
-import json
-from time import sleep
 import requests
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
@@ -36,7 +34,7 @@ st.image(logo, width=120)
 # 📌 Zona horaria
 ARG_TZ = timezone("America/Argentina/Buenos_Aires")
 
-# 🧠 Cache: cargar lista de jugadoras
+# 📌 Cache: cargar lista de jugadoras
 @st.cache_data(ttl=300)
 def cargar_jugadoras():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -49,7 +47,7 @@ def cargar_jugadoras():
     jugadoras = jugadoras_ws.col_values(1)[1:]  # sin encabezado
     return jugadoras
 
-# 📌 Cache: obtener asistencias previas por fecha (versión mejorada)
+# 📌 Cache: obtener asistencias previas por fecha
 @st.cache_data(ttl=300)
 def obtener_asistencias_previas(fecha):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -57,10 +55,8 @@ def obtener_asistencias_previas(fecha):
     creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     client = gspread.authorize(creds)
 
-    spreadsheet = client.open("Asistencia Hockey")
-    hoja = spreadsheet.worksheet("Asistencias")
+    hoja = client.open("Asistencia Hockey").worksheet("Asistencias")
     datos = hoja.get_all_values()
-
     encabezados = datos[0]
     idx_fecha = encabezados.index("Fecha")
     idx_jugadora = encabezados.index("Jugadora")
@@ -77,28 +73,47 @@ def obtener_asistencias_previas(fecha):
 
     return jugadoras_presentes
 
-# 📌 Autenticación para escritura directa
-@st.cache_resource
-def get_authed_session():
-    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = service_account.Credentials.from_service_account_info(
-        st.secrets["credentials"], scopes=scopes
-    )
-    return AuthorizedSession(creds)
+# 📌 Actualiza o agrega filas nuevas sin duplicados
+def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    credentials_dict = st.secrets["credentials"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    client = gspread.authorize(creds)
 
-def append_rows_direct(sheet_id, rango, valores):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{rango}:append"
-    params = {"valueInputOption": "USER_ENTERED"}
-    body = {"values": valores}
-    session = get_authed_session()
-    response = session.post(url, params=params, json=body)
-    response.raise_for_status()
+    hoja = client.open_by_key(sheet_id).worksheet(hoja_nombre)
+    datos = hoja.get_all_values()
+    encabezados = datos[0]
+
+    idx_fecha = encabezados.index("Fecha")
+    idx_jugadora = encabezados.index("Jugadora")
+
+    nuevas_dict = {
+        (fila[0], fila[1]): fila  # clave: (fecha, jugadora)
+        for fila in nuevas_filas
+    }
+
+    filas_existentes = datos[1:]
+    filas_actualizadas = set()
+    nuevas_para_agregar = []
+
+    for i, fila in enumerate(filas_existentes):
+        if len(fila) < max(idx_fecha, idx_jugadora) + 1:
+            continue
+        clave = (fila[idx_fecha].strip(), fila[idx_jugadora].strip())
+        if clave in nuevas_dict:
+            hoja.update(f"A{i+2}", [nuevas_dict[clave]])
+            filas_actualizadas.add(clave)
+
+    for clave, fila in nuevas_dict.items():
+        if clave not in filas_actualizadas:
+            nuevas_para_agregar.append(fila)
+
+    if nuevas_para_agregar:
+        hoja.append_rows(nuevas_para_agregar, value_input_option="USER_ENTERED")
 
 # 🏑 UI
 st.title("Registro de Asistencia 🏑")
 st.markdown("### 🗓️ Fecha del entrenamiento")
-
-# Fecha en horario Argentina
 fecha = st.date_input("Seleccioná la fecha", value=datetime.now(ARG_TZ).date())
 
 # Jugadoras y filtrado por asistencia previa
@@ -143,10 +158,10 @@ if st.button("✅ Guardar asistencia"):
             d["comentario"]
         ])
     try:
-        append_rows_direct(
+        upsert_asistencias(
             sheet_id="1MIzfkUB9kOsHyvNKVfBcS0VzmGbJnE4w8ufnvxHd5Po",
-            rango="Asistencias!A1:E1",
-            valores=nuevas_filas
+            hoja_nombre="Asistencias",
+            nuevas_filas=nuevas_filas
         )
         total_asistieron = sum(1 for d in datos_asistencia if d["asistio"] == "SÍ")
         st.success(f"✅ ¡Asistencia guardada con éxito! 🟢 {total_asistieron} jugadoras asistieron.")
