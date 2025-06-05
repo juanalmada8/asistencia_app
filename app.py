@@ -49,7 +49,7 @@ def cargar_jugadoras():
     jugadoras = jugadoras_ws.col_values(1)[1:]  # sin encabezado
     return jugadoras
 
-# 📌 Cache: obtener asistencias previas por fecha
+# 📌 Cache: obtener asistencias previas por fecha (versión mejorada)
 @st.cache_data(ttl=300)
 def obtener_asistencias_previas(fecha):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -59,11 +59,22 @@ def obtener_asistencias_previas(fecha):
 
     spreadsheet = client.open("Asistencia Hockey")
     hoja = spreadsheet.worksheet("Asistencias")
-    filas = hoja.get_all_records()
+    datos = hoja.get_all_values()
+
+    encabezados = datos[0]
+    idx_fecha = encabezados.index("Fecha")
+    idx_jugadora = encabezados.index("Jugadora")
+    idx_asistio = encabezados.index("Asistió")
 
     fecha_str = fecha.strftime("%Y-%m-%d")
-    asistencias_hoy = [f for f in filas if f["Fecha"] == fecha_str and f["Asistió"] == "SÍ"]
-    jugadoras_presentes = [f["Jugadora"] for f in asistencias_hoy]
+    jugadoras_presentes = []
+
+    for fila in datos[1:]:
+        if len(fila) <= max(idx_fecha, idx_jugadora, idx_asistio):
+            continue
+        if fila[idx_fecha].strip() == fecha_str and fila[idx_asistio].strip().upper() == "SÍ":
+            jugadoras_presentes.append(fila[idx_jugadora])
+
     return jugadoras_presentes
 
 # 📌 Autenticación para escritura directa
