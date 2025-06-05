@@ -3,7 +3,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 from PIL import Image
-import requests
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
 from pytz import timezone
@@ -34,25 +33,20 @@ st.image(logo, width=120)
 # 📌 Zona horaria
 ARG_TZ = timezone("America/Argentina/Buenos_Aires")
 
-# 📌 Cache: cargar lista de jugadoras
+# 📌 Cargar jugadoras
 @st.cache_data(ttl=300)
 def cargar_jugadoras():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    credentials_dict = st.secrets["credentials"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["credentials"], scope)
     client = gspread.authorize(creds)
+    hoja = client.open("Asistencia Hockey").worksheet("Jugadoras")
+    return hoja.col_values(1)[1:]  # sin encabezado
 
-    spreadsheet = client.open("Asistencia Hockey")
-    jugadoras_ws = spreadsheet.worksheet("Jugadoras")
-    jugadoras = jugadoras_ws.col_values(1)[1:]  # sin encabezado
-    return jugadoras
-
-# 📌 Cache: obtener asistencias previas por fecha
+# 📌 Obtener asistencia previa (último registro por jugadora y fecha)
 @st.cache_data(ttl=300)
 def obtener_asistencias_previas(fecha):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    credentials_dict = st.secrets["credentials"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["credentials"], scope)
     client = gspread.authorize(creds)
 
     hoja = client.open("Asistencia Hockey").worksheet("Asistencias")
@@ -63,21 +57,24 @@ def obtener_asistencias_previas(fecha):
     idx_asistio = encabezados.index("Asistió")
 
     fecha_str = fecha.strftime("%Y-%m-%d")
-    jugadoras_presentes = []
+    ultimos_registros = {}
 
     for fila in datos[1:]:
         if len(fila) <= max(idx_fecha, idx_jugadora, idx_asistio):
             continue
-        if fila[idx_fecha].strip() == fecha_str and fila[idx_asistio].strip().upper() == "SÍ":
-            jugadoras_presentes.append(fila[idx_jugadora])
+        f_fecha = fila[idx_fecha].strip()
+        f_jugadora = fila[idx_jugadora].strip()
+        f_asistio = fila[idx_asistio].strip().upper()
+        if f_fecha == fecha_str:
+            ultimos_registros[f_jugadora] = f_asistio
 
+    jugadoras_presentes = [j for j, estado in ultimos_registros.items() if estado == "SÍ"]
     return jugadoras_presentes
 
-# 📌 Actualiza o agrega filas nuevas sin duplicados
+# 📌 Upsert: actualiza si existe, agrega si no
 def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    credentials_dict = st.secrets["credentials"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["credentials"], scope)
     client = gspread.authorize(creds)
 
     hoja = client.open_by_key(sheet_id).worksheet(hoja_nombre)
@@ -87,11 +84,7 @@ def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
     idx_fecha = encabezados.index("Fecha")
     idx_jugadora = encabezados.index("Jugadora")
 
-    nuevas_dict = {
-        (fila[0], fila[1]): fila  # clave: (fecha, jugadora)
-        for fila in nuevas_filas
-    }
-
+    nuevas_dict = {(f[0], f[1]): f for f in nuevas_filas}
     filas_existentes = datos[1:]
     filas_actualizadas = set()
     nuevas_para_agregar = []
@@ -111,12 +104,12 @@ def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
     if nuevas_para_agregar:
         hoja.append_rows(nuevas_para_agregar, value_input_option="USER_ENTERED")
 
-# 🏑 UI
+# 🏑 UI principal
 st.title("Registro de Asistencia 🏑")
 st.markdown("### 🗓️ Fecha del entrenamiento")
 fecha = st.date_input("Seleccioná la fecha", value=datetime.now(ARG_TZ).date())
 
-# Jugadoras y filtrado por asistencia previa
+# Cargar jugadoras y asistencias previas
 jugadoras = cargar_jugadoras()
 jugadoras_presentes = obtener_asistencias_previas(fecha)
 jugadoras_faltantes = [j for j in jugadoras if j not in jugadoras_presentes]
@@ -148,15 +141,15 @@ for jugadora in jugadoras_faltantes:
 st.markdown("---")
 
 if st.button("✅ Guardar asistencia"):
-    nuevas_filas = []
-    for d in datos_asistencia:
-        nuevas_filas.append([
+    nuevas_filas = [
+        [
             fecha.strftime("%Y-%m-%d"),
             d["jugadora"],
             d["asistio"],
             d["llego_tarde"],
             d["comentario"]
-        ])
+        ] for d in datos_asistencia
+    ]
     try:
         upsert_asistencias(
             sheet_id="1MIzfkUB9kOsHyvNKVfBcS0VzmGbJnE4w8ufnvxHd5Po",
