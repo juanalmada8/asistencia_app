@@ -8,15 +8,12 @@ from time import sleep
 import requests
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
+from pytz import timezone
 
+# Configuración general
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
 
-st.markdown(
-    """
-    <link rel="shortcut icon" href="favicon.png">
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""<link rel="shortcut icon" href="favicon.png">""", unsafe_allow_html=True)
 
 # 🔐 Autenticación con clave
 if "logged_in" not in st.session_state:
@@ -36,9 +33,12 @@ if not st.session_state.logged_in:
 logo = Image.open("icon.jpg")
 st.image(logo, width=120)
 
-# 🧠 CACHE: agrupar conexión + lecturas en 1 sola función
+# 📌 Zona horaria
+ARG_TZ = timezone("America/Argentina/Buenos_Aires")
+
+# 🧠 Cache: cargar lista de jugadoras
 @st.cache_data(ttl=300)
-def cargar_datos():
+def cargar_jugadoras():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     credentials_dict = st.secrets["credentials"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
@@ -47,12 +47,26 @@ def cargar_datos():
     spreadsheet = client.open("Asistencia Hockey")
     jugadoras_ws = spreadsheet.worksheet("Jugadoras")
     jugadoras = jugadoras_ws.col_values(1)[1:]  # sin encabezado
-
     return jugadoras
 
-jugadoras = cargar_datos()
+# 📌 Cache: obtener asistencias previas por fecha
+@st.cache_data(ttl=300)
+def obtener_asistencias_previas(fecha):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    credentials_dict = st.secrets["credentials"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    client = gspread.authorize(creds)
 
-# Funcíon alternativa para guardar asistencia directo con API
+    spreadsheet = client.open("Asistencia Hockey")
+    hoja = spreadsheet.worksheet("Asistencias")
+    filas = hoja.get_all_records()
+
+    fecha_str = fecha.strftime("%Y-%m-%d")
+    asistencias_hoy = [f for f in filas if f["Fecha"] == fecha_str and f["Asistió"] == "SÍ"]
+    jugadoras_presentes = [f["Jugadora"] for f in asistencias_hoy]
+    return jugadoras_presentes
+
+# 📌 Autenticación para escritura directa
 @st.cache_resource
 def get_authed_session():
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -69,25 +83,34 @@ def append_rows_direct(sheet_id, rango, valores):
     response = session.post(url, params=params, json=body)
     response.raise_for_status()
 
-# UI
+# 🏑 UI
 st.title("Registro de Asistencia 🏑")
 st.markdown("### 🗓️ Fecha del entrenamiento")
-fecha = st.date_input("", value=datetime.today())
+
+# Fecha en horario Argentina
+fecha = st.date_input("Seleccioná la fecha", value=datetime.now(ARG_TZ).date())
+
+# Jugadoras y filtrado por asistencia previa
+jugadoras = cargar_jugadoras()
+jugadoras_presentes = obtener_asistencias_previas(fecha)
+jugadoras_faltantes = [j for j in jugadoras if j not in jugadoras_presentes]
+
+if not jugadoras_faltantes:
+    st.success("✅ Todas las jugadoras ya tienen registrada la asistencia para esta fecha.")
+    st.stop()
 
 st.markdown("### Jugadoras")
 datos_asistencia = []
 
-for jugadora in jugadoras:
+for jugadora in jugadoras_faltantes:
     st.markdown(f"**{jugadora}**")
     asistio = st.checkbox("Asistió", key=f"asistio_{jugadora}")
-
     tarde = False
     comentario = ""
 
     if asistio:
         tarde = st.checkbox("Llegó tarde", key=f"tarde_{jugadora}")
     comentario = st.text_input("Comentario (opcional)", key=f"comentario_{jugadora}")
-
 
     datos_asistencia.append({
         "jugadora": jugadora,
@@ -102,7 +125,7 @@ if st.button("✅ Guardar asistencia"):
     nuevas_filas = []
     for d in datos_asistencia:
         nuevas_filas.append([
-            str(fecha),
+            fecha.strftime("%Y-%m-%d"),
             d["jugadora"],
             d["asistio"],
             d["llego_tarde"],
