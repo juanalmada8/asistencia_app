@@ -1,11 +1,12 @@
 # ui/registro.py
 import streamlit as st
+from utils.helpers import normalizar_asistio, normalizar_tarde, limpiar_texto, to_str_fecha
 
-def mostrar_formulario_asistencia(jugadoras, fecha):
+def mostrar_formulario_asistencia(jugadoras_faltantes, fecha):
     st.markdown("### Jugadoras")
     datos_asistencia = []
 
-    for jugadora in jugadoras:
+    for jugadora in jugadoras_faltantes:
         st.markdown(f"**{jugadora}**")
         asistio = st.checkbox("Asistió", key=f"asistio_{jugadora}")
         tarde = False
@@ -17,22 +18,23 @@ def mostrar_formulario_asistencia(jugadoras, fecha):
 
         datos_asistencia.append({
             "jugadora": jugadora,
-            "asistio": "SÍ" if asistio else "NO",
-            "llego_tarde": "SÍ" if asistio and tarde else "NO",
-            "comentario": comentario.upper() if comentario else ""
+            "asistio": normalizar_asistio("SÍ" if asistio else "NO"),
+            "llego_tarde": normalizar_tarde("SÍ" if asistio and tarde else "NO"),
+            "comentario": limpiar_texto(comentario)
         })
 
     st.markdown("---")
 
     if st.button("✅ Guardar asistencia"):
-        return [
+        nuevas_filas = [
             [
-                fecha.strftime("%Y-%m-%d"),
+                to_str_fecha(fecha),
                 d["jugadora"],
                 d["asistio"],
                 d["llego_tarde"],
                 d["comentario"]
             ] for d in datos_asistencia
         ]
+        return nuevas_filas
 
-    return None
+    return []

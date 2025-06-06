@@ -1,24 +1,18 @@
 # services/google_sheets.py
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import streamlit as st
+from config import CREDENTIALS_DICT
 
-SCOPE = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-]
-
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 def get_client():
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["credentials"], SCOPE)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, SCOPE)
     return gspread.authorize(creds)
-
 
 def cargar_jugadoras():
     client = get_client()
     hoja = client.open("Asistencia Hockey").worksheet("Jugadoras")
-    return hoja.col_values(1)[1:]
-
+    return hoja.col_values(1)[1:]  # sin encabezado
 
 def obtener_asistencias_previas(fecha):
     client = get_client()
@@ -41,8 +35,8 @@ def obtener_asistencias_previas(fecha):
         if f_fecha == fecha_str:
             ultimos_registros[f_jugadora] = f_asistio
 
-    return [j for j, estado in ultimos_registros.items() if estado == "SÍ"]
-
+    jugadoras_presentes = [j for j, estado in ultimos_registros.items() if estado == "SÍ"]
+    return jugadoras_presentes
 
 def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
     client = get_client()

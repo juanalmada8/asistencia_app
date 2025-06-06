@@ -3,11 +3,12 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit as st
+from config import CREDENTIALS_DICT
 
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 def generar_resumen(sheet_id):
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["credentials"], scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, SCOPE)
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_key(sheet_id)
     ws = spreadsheet.worksheet("Asistencias")
@@ -23,6 +24,7 @@ def generar_resumen(sheet_id):
     df["Llegó tarde"] = df["Llegó tarde"].str.strip().str.upper()
     df["Mes"] = df["Fecha"].dt.to_period("M")
 
+    # Métricas
     entrenamientos_por_mes = df.groupby("Mes")["Fecha"].nunique().reset_index(name="Entrenamientos del mes")
 
     presencias_por_jugadora_mes = (

@@ -6,12 +6,12 @@ from services.google_sheets import cargar_jugadoras, obtener_asistencias_previas
 from services.asistencia import generar_resumen
 from ui.login import login
 from ui.registro import mostrar_formulario_asistencia
-from ui.resumen import mostrar_boton_resumen
 
-# Configuracion inicial
+# Configuración inicial
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
+st.markdown("""<link rel="shortcut icon" href="favicon.png">""", unsafe_allow_html=True)
 
-# Login
+# Login con clave
 if not login():
     st.stop()
 
@@ -36,5 +36,6 @@ else:
             st.error("❌ Error al guardar la asistencia.")
             st.exception(e)
 
-# Boton de resumen
-mostrar_boton_resumen(SHEET_ID)
+# Botón de resumen
+if st.button("📊 Generar resumen de asistencia"):
+    generar_resumen(SHEET_ID)

@@ -1,3 +1,4 @@
+
 # Asistencia App - Hockey
 
 Aplicación profesional construida con **Streamlit** para registrar y analizar asistencias de jugadoras en entrenamientos deportivos. Guarda la información en Google Sheets y genera un resumen automático con métricas por fecha, jugadora y mes.
@@ -18,7 +19,6 @@ Aplicación profesional construida con **Streamlit** para registrar y analizar a
 
 ## Estructura del proyecto
 
-```
 ASISTENCIA_APP/
 ├── main.py                # app principal (Streamlit)
 ├── config.py              # configuración global (IDs, timezone)
@@ -32,7 +32,8 @@ ASISTENCIA_APP/
 │   ├── login.py           # login por clave
 │   ├── registro.py        # formulario de asistencia
 │   └── resumen.py         # botón para generar resumen
-```
+├── utils/
+│   └── helpers.py         # utilidades auxiliares
 
 ---
 
@@ -46,12 +47,10 @@ ASISTENCIA_APP/
 
 ## Instalación
 
-```bash
 python -m venv venv
 source venv/bin/activate  # o venv\Scripts\activate en Windows
 pip install -r requirements.txt
 streamlit run main.py
-```
 
 ---
 
@@ -59,7 +58,6 @@ streamlit run main.py
 
 En `.streamlit/secrets.toml`:
 
-```toml
 [app]
 password = "tu_clave_secreta"
 
@@ -71,11 +69,11 @@ private_key = "-----BEGIN PRIVATE KEY-----\n..."
 client_email = "..."
 client_id = "..."
 ...
-```
 
 ---
 
 ## Futuras mejoras
+
 - Gráficos en Streamlit (asistencia por semana, top 5 jugadoras, etc.)
 - Exportación a Excel o PDF
 - Filtros por categoría (ej: Sub 14, Primera)
@@ -90,4 +88,5 @@ Desarrollado por **Juan Almada**, 2025.
 ---
 
 ## Licencia
+
 Uso privado / educativo.
