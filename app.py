@@ -3,10 +3,9 @@ import streamlit as st
 from datetime import datetime
 from config import SHEET_ID, ARG_TZ
 from services.google_sheets import cargar_jugadoras, obtener_asistencias_previas, upsert_asistencias
-from services.asistencia import generar_resumen
 from ui.login import login
 from ui.registro import mostrar_formulario_asistencia
-from ui.resumen import mostrar_boton_resumen
+from ui.resumen import mostrar_boton_resumen, generar_resumen
 
 # Configuración general
 st.set_page_config(page_title="Registro de Asistencia", page_icon="📋", layout="centered")
