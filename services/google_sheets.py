@@ -1,5 +1,7 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import streamlit as st
+
 from config import SHEET_ID, CREDENTIALS_DICT
 
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -15,13 +17,26 @@ def cargar_jugadoras():
 
 
 def obtener_asistencias_previas(fecha):
-    client = get_client()
+    from config import CREDENTIALS_DICT, SHEET_ID
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, scope)
+    client = gspread.authorize(creds)
+
     hoja = client.open_by_key(SHEET_ID).worksheet("Asistencias")
     datos = hoja.get_all_values()
     encabezados = datos[0]
-    idx_fecha = encabezados.index("Fecha")
-    idx_jugadora = encabezados.index("Jugadora")
-    idx_asistio = encabezados.index("Asist\u00f3")
+
+    # Normalizar encabezados para comparación
+    encabezados_norm = [e.strip().lower() for e in encabezados]
+
+    try:
+        idx_fecha = encabezados_norm.index("fecha")
+        idx_jugadora = encabezados_norm.index("jugadora")
+        idx_asistio = encabezados_norm.index("asistió")
+    except ValueError as e:
+        st.error("❌ Error al leer los encabezados de la hoja 'Asistencias'. Verificá que existan las columnas: Fecha, Jugadora, Asistió.")
+        st.write("Encabezados detectados:", encabezados)
+        return []
 
     fecha_str = fecha.strftime("%Y-%m-%d")
     ultimos_registros = {}
@@ -35,7 +50,9 @@ def obtener_asistencias_previas(fecha):
         if f_fecha == fecha_str:
             ultimos_registros[f_jugadora] = f_asistio
 
-    return [j for j, estado in ultimos_registros.items() if estado == "S\u00cd"]
+    jugadoras_presentes = [j for j, estado in ultimos_registros.items() if estado == "SÍ"]
+    return jugadoras_presentes
+
 
 
 def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
