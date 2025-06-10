@@ -1,19 +1,17 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config import CREDENTIALS_DICT
+from config import SHEET_ID, CREDENTIALS_DICT
 
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
 
 def get_client():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, SCOPE)
     return gspread.authorize(creds)
 
-
 def cargar_jugadoras():
     client = get_client()
     hoja = client.open_by_key(SHEET_ID).worksheet("Jugadoras")
-    return hoja.col_values(1)[1:]  # sin encabezado
+    return hoja.col_values(1)[1:]
 
 
 def obtener_asistencias_previas(fecha):
