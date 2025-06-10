@@ -69,3 +69,21 @@ def upsert_asistencias(sheet_id, hoja_nombre, nuevas_filas):
 
     if nuevas_para_agregar:
         hoja.append_rows(nuevas_para_agregar, value_input_option="USER_ENTERED")
+
+def get_dataframe_from_sheet(sheet_id, nombre_hoja):
+    client = get_client()
+    ws = client.open_by_key(sheet_id).worksheet(nombre_hoja)
+    data = ws.get_all_values()
+    if not data or len(data) < 2:
+        return pd.DataFrame()
+    return pd.DataFrame(data[1:], columns=data[0])
+
+def exportar_df_a_hoja(ws, df, fila_inicio):
+    """
+    Pega un DataFrame en la hoja `ws` comenzando en la fila `fila_inicio`.
+    Devuelve la próxima fila libre.
+    """
+    if df.empty:
+        return fila_inicio
+    ws.update(f"A{fila_inicio}", [df.columns.tolist()] + df.astype(str).values.tolist())
+    return fila_inicio + len(df) + 2
